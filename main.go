@@ -24,7 +24,7 @@ func main() {
 
 	fmt.Println("Successfully connected to DB")
 
-	//example requests
+	//example return requests
 	displayData(ctx, db)
 	fmt.Println()
 
@@ -33,6 +33,14 @@ func main() {
 		log.Fatal("Failed to find user:", err)
 	}
 	user.PrintUser()
+
+	//example create requests
+	u := &User {
+		Name: "UserExample",
+		Email: "userexample@example.com",
+	}
+	createUser(ctx, db, u)
+	displayData(ctx, db)
 
 }
 
@@ -100,4 +108,12 @@ func getByUserId(ctx context.Context, db *pgxpool.Pool, id int) (*User, error) {
 	}
 
 	return &u, nil
+}
+
+func createUser(ctx context.Context, db *pgxpool.Pool, u *User) error {
+	err := db.QueryRow(ctx, "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, created_at", u.Name, u.Email).Scan(&u.Id, &u.Created_at)
+	if err != nil {
+		return err
+	}
+	return nil
 }
