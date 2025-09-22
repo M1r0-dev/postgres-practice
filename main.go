@@ -54,6 +54,11 @@ func main() {
 	}
 	displayData(ctx, db)
 
+	err = deleteUser(ctx, db, u)
+	if err != nil {
+		log.Fatal("Failed to delete user:", err)
+	}
+	displayData(ctx, db)
 }
 
 func connectionToDB(ctx context.Context) (*pgxpool.Pool, error) {
@@ -158,4 +163,17 @@ func updateUser(ctx context.Context, db *pgxpool.Pool, u *User) error {
     }
     
     return nil
+}
+
+func deleteUser(ctx context.Context, db *pgxpool.Pool, u *User) error {
+	result, err := db.Exec(ctx, "DELETE FROM users WHERE id = $1", u.Id)
+	if err != nil {
+		return fmt.Errorf("error deleting user: %w", err)
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user with id %d not found", u.Id)
+	}
+	return nil
 }
