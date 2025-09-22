@@ -34,12 +34,24 @@ func main() {
 	}
 	user.PrintUser()
 
-	//example create requests
+	//example create request
 	u := &User {
 		Name: "UserExample",
-		Email: "userexample@example.com",
+		Email: "example@example.com",
 	}
-	createUser(ctx, db, u)
+
+	err = createUser(ctx, db, u)
+	if err != nil {
+		log.Fatal("Failed to create user:", err)
+	}
+
+	u.Email = "uusertwinktexample@example.com"
+
+	//example update request
+	err = updateUser(ctx, db, u)
+	if err != nil {
+		log.Fatal("Failed to update user:", err)
+	}
 	displayData(ctx, db)
 
 }
@@ -111,9 +123,39 @@ func getByUserId(ctx context.Context, db *pgxpool.Pool, id int) (*User, error) {
 }
 
 func createUser(ctx context.Context, db *pgxpool.Pool, u *User) error {
-	err := db.QueryRow(ctx, "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, created_at", u.Name, u.Email).Scan(&u.Id, &u.Created_at)
-	if err != nil {
-		return err
-	}
-	return nil
+    err := db.QueryRow(ctx, 
+        "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, created_at", 
+        u.Name, u.Email).
+        Scan(&u.Id, &u.Created_at)
+    
+    if err != nil {
+        if isDuplicateEmailError(err) {
+            return fmt.Errorf("email %s already exists", u.Email)
+        }
+        return fmt.Errorf("failed to create user: %w", err)
+    }
+    
+    return nil
+}
+
+
+
+func updateUser(ctx context.Context, db *pgxpool.Pool, u *User) error {
+    err := db.QueryRow(ctx,
+        "UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING created_at",
+        u.Name, u.Email, u.Id).
+        Scan(&u.Created_at)
+    
+    if errors.Is(err, pgx.ErrNoRows) {
+        return fmt.Errorf("user with id %d not found", u.Id)
+    }
+    
+    if err != nil {
+        if isDuplicateEmailError(err) {
+            return fmt.Errorf("email %s already exists", u.Email)
+        }
+        return fmt.Errorf("failed to update user: %w", err)
+    }
+    
+    return nil
 }
